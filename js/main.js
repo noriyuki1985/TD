@@ -1,10 +1,13 @@
 // js/main.js
-import assetLoader   from '../modules/assetLoader/assetLoader.js';
-import audioManager  from '../modules/audio/audioManager.js';
-import stageLoader   from '../modules/stageLoader/stageLoader.js';
-import renderer      from '../modules/renderer/renderer.js';
-import playModel     from '../scenes/play/playModel.js';
-import playView      from '../scenes/play/playView.js';
+// ─────────────────────────────────
+// ESモジュールとして読み込む前提です
+
+import assetLoader    from '../modules/assetLoader/assetLoader.js';
+import audioManager   from '../modules/audio/audioManager.js';
+import stageLoader    from '../modules/stageLoader/stageLoader.js';
+import renderer       from '../modules/renderer/renderer.js';
+import playModel      from '../scenes/play/playModel.js';
+import playView       from '../scenes/play/playView.js';
 import playController from '../scenes/play/playController.js';
 
 Promise.all([

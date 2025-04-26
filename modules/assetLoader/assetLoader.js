@@ -1,13 +1,16 @@
 // modules/assetLoader/assetLoader.js
-import CONFIG from '../js/config.js'; // main.js と同じ場所にある場合は相対パスを調整
+// ─────────────────────────────────
+// グローバルの CONFIG を参照して画像をプリロードします。
+// import CONFIG は不要・書かないでください。
 
 const assetLoader = {
   images: {},
 
   loadImages() {
+    // 読み込む spriteKey の一覧を組み立て
     const keys = [
       // タイル
-      'tile_grass','tile_road',
+      'tile_grass', 'tile_road',
       // 敵
       ...CONFIG.ENEMY_DEFINITIONS.map(e => e.spriteKey),
       // タワー
@@ -16,16 +19,19 @@ const assetLoader = {
       ...CONFIG.PROJECTILE_DEFINITIONS.map(p => p.spriteKey)
     ];
 
+    // すべての画像を非同期ロード
     return Promise.all(
       keys.map(key => {
+        // key からサブフォルダ名を判別
         const category = key.startsWith('tile_')   ? 'tiles'
                         : key.startsWith('enemy_')  ? 'enemies'
                         : key.startsWith('tower_')  ? 'towers'
                         :                             'projectiles';
+
         const img = new Image();
         img.src = `${CONFIG.ASSETS_PATH}/${category}/${key}.png`;
         this.images[key] = img;
-        return new Promise(res => img.onload = res);
+        return new Promise(res => { img.onload = res; });
       })
     );
   },

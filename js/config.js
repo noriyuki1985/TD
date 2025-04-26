@@ -1,4 +1,7 @@
 // js/config.js
+// ─────────────────────────────────
+// グローバルで使う設定オブジェクトだけを定義します。
+// export は不要・禁止です。
 const CONFIG = {
   TILE_SIZE: 32,
   MAP_ROWS: 50,
@@ -10,7 +13,7 @@ const CONFIG = {
     { id: 'orc_soldier', hp: 200, speed: 1.0, reward: 20, spriteKey: 'enemy_orc_soldier' }
   ],
   TOWER_DEFINITIONS: [
-    { id: 'archer_tower', cost: 100, range: 3, damage: 25, fireRate: 800,  projectileType: 'arrow',         spriteKey: 'tower_archer' },
+    { id: 'archer_tower', cost: 100, range: 3, damage: 25, fireRate:  800, projectileType: 'arrow',         spriteKey: 'tower_archer' },
     { id: 'mage_tower',   cost: 250, range: 3, damage: 40, fireRate: 1200, projectileType: 'magic_missile', spriteKey: 'tower_mage'   }
   ],
   PROJECTILE_DEFINITIONS: [
@@ -19,4 +22,4 @@ const CONFIG = {
   ]
 };
 
-// config.js はグローバル変数として使うので export は不要
+// ※ここに「export default CONFIG;」は絶対に書かないでください。

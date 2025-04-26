@@ -10,19 +10,18 @@
     "tileSize": 32,
     "tileTypes": [
       { "id": 0, "name": "Grass", "isWalkable": false, "isBuildable": true,  "spriteKey": "tile_grass" },
-      { "id": 1, "name": "Road",  "isWalkable":  true, "isBuildable": false, "spriteKey": "tile_road" },
-      { "id": 2, "name": "Water", "isWalkable": false, "isBuildable": false, "spriteKey": "tile_water" },
-      { "id": 3, "name": "Rock",  "isWalkable": false, "isBuildable": false, "spriteKey": "tile_rock" }
+      { "id": 1, "name": "Road",  "isWalkable":  true, "isBuildable": false, "spriteKey": "tile_road" }
     ],
     "tiles": [
-      /* シート「マップ配置」の 50×50 数値行列をここに貼り付け */
+      [0,0,0,/* …50個… */,0],
+      /* 50 行分 */
     ]
   },
   "path": {
     "pathName": "tutorial_1",
     "waypoints": [
-      /* シート「経路」の 50 行 (order,row,col) を
-         { "order":0,"row":0,"col":25 },…形式で貼り付け */
+      { "order": 0,  "row": 0,  "col": 25 },
+      { "order": 49, "row": 49, "col": 25 }
     ]
   },
   "initialState": {
@@ -30,15 +29,12 @@
     "lives": 20
   },
   "waves": [
-    /* シート「ウェーブ」の 10 行
-       [
-         {
-           "waveNo":1,
-           "delay":2000,
-           "enemies":[ { "type":"slime","count":5,"interval":1000 } ]
-         },
-         …
-       ]
-    */
+    {
+      "waveNo": 1,
+      "delay": 2000,
+      "enemies": [
+        { "type": "slime", "count": 5, "interval": 1000 }
+      ]
+    }
   ]
 }

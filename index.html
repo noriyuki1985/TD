@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>タワーディフェンス - チュートリアル</title>
+  <!-- Base を指定すると、すべての相対URLが /TD/ 配下になります -->
+  <base href="/TD/" />
+
   <link rel="stylesheet" href="css/global.css" />
 </head>
 <body>
@@ -11,10 +14,10 @@
     <div id="hud"></div>
   </div>
 
-  <!-- config.js は js/config.js から読み込み -->
+  <!-- 設定ファイル（グローバル変数定義） -->
   <script src="js/config.js"></script>
 
-  <!-- main.js はモジュールとして読み込み -->
+  <!-- メインロジック（ESモジュール） -->
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

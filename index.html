@@ -11,12 +11,10 @@
     <div id="hud"></div>
   </div>
 
-- <!-- 設定ファイルもモジュールとして読み込んでいた -->
-- <script type="module" src="js/config.js"></script>
-+ <!-- 設定ファイルは通常のスクリプトとして読み込み -->
-+ <script src="js/config.js"></script>
+  <!-- ① config.js はグローバル変数を定義するだけなので 通常の スクリプトタグ -->
+  <script src="js/config.js"></script>
 
-<!-- メインロジックをモジュールとして読み込む -->
-<script type="module" src="js/main.js"></script>
+  <!-- ② main.js は import/export を含むモジュールなので type="module" -->
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

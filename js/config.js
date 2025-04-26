@@ -1,17 +1,16 @@
 // js/config.js
 // ─────────────────────────────────
-// グローバル設定オブジェクト
-// ※export は書かないでください
+// グローバル設定オブジェクト（export はなし）
 
 const CONFIG = {
   TILE_SIZE: 32,
   MAP_ROWS: 50,
   MAP_COLS: 50,
 
-  // 画像は /TD/images 以下に配置
-  ASSETS_PATH: 'images',
+  // 画像は /TD/assets/images 以下
+  ASSETS_PATH: 'assets/images',
 
-  // ステージ JSON は /TD/assets/data/stages 以下
+  // ステージ定義は /TD/assets/data/stages 以下
   STAGE_JSON:  'assets/data/stages/stage1.json',
 
   ENEMY_DEFINITIONS: [
@@ -29,4 +28,5 @@ const CONFIG = {
   ]
 };
 
-// ここまでが config.js の全内容です。
+// ここがファイルの全内容です。
+// export は記述しないでください。

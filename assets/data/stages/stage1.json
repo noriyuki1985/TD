@@ -1,0 +1,44 @@
+{
+  "id": "tutorial_1",
+  "name": "チュートリアル",
+  "description": "歩兵か射手を雇ってマップに配置しよう！",
+  "background": "background_tutorial_1",
+  "music": "music_tutorial_1",
+  "map": {
+    "rows": 50,
+    "cols": 50,
+    "tileSize": 32,
+    "tileTypes": [
+      { "id": 0, "name": "Grass", "isWalkable": false, "isBuildable": true,  "spriteKey": "tile_grass" },
+      { "id": 1, "name": "Road",  "isWalkable":  true, "isBuildable": false, "spriteKey": "tile_road" },
+      { "id": 2, "name": "Water", "isWalkable": false, "isBuildable": false, "spriteKey": "tile_water" },
+      { "id": 3, "name": "Rock",  "isWalkable": false, "isBuildable": false, "spriteKey": "tile_rock" }
+    ],
+    "tiles": [
+      /* シート「マップ配置」の 50×50 数値行列をここに貼り付け */
+    ]
+  },
+  "path": {
+    "pathName": "tutorial_1",
+    "waypoints": [
+      /* シート「経路」の 50 行 (order,row,col) を
+         { "order":0,"row":0,"col":25 },…形式で貼り付け */
+    ]
+  },
+  "initialState": {
+    "gold": 1000,
+    "lives": 20
+  },
+  "waves": [
+    /* シート「ウェーブ」の 10 行
+       [
+         {
+           "waveNo":1,
+           "delay":2000,
+           "enemies":[ { "type":"slime","count":5,"interval":1000 } ]
+         },
+         …
+       ]
+    */
+  ]
+}

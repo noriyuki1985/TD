@@ -1,13 +1,18 @@
 // js/config.js
 // ─────────────────────────────────
-// グローバルで使う設定オブジェクト
-// export は不要・書かないでください
+// グローバルで使う設定オブジェクト。
+// export は書かないでください。
+
 const CONFIG = {
   TILE_SIZE: 32,
   MAP_ROWS: 50,
   MAP_COLS: 50,
-  ASSETS_PATH: 'assets/images',                 // 先頭スラッシュなし
-  STAGE_JSON:  'assets/data/stages/stage1.json',// 先頭スラッシュなし
+
+  // 画像フォルダはリポジトリ直下の images/
+  ASSETS_PATH: 'images',
+
+  // ステージ JSON は assets/data/stages/ 配下
+  STAGE_JSON:  'assets/data/stages/stage1.json',
 
   ENEMY_DEFINITIONS: [
     { id: 'slime',       hp:  50, speed: 1.2, reward:  5, spriteKey: 'enemy_slime' },
@@ -23,4 +28,5 @@ const CONFIG = {
     { id: 'arrow', speed: 2.0, spriteKey: 'proj_arrow' }
   ]
 };
-// ※ここに "export" は書かない
+
+// ここまで全てグローバル定義。export は不要です。

@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>タワーディフェンス - 敵移動＆ライフ減少デモ</title>
+  <title>タワーディフェンス – 敵移動＆ライフ管理</title>
   <!-- GitHub Pages で /TD/ 配下とみなす -->
   <base href="/TD/" />
   <style>
@@ -20,29 +20,30 @@
   </div>
 
   <script type="module">
-  // ───────────────────────────────────────────────────────────
+  //──────────────────────────────────────────────────────
   // 1) 設定
   const CONFIG = {
-    TILE_SIZE: 32,
-    MAP_ROWS: 50,
-    MAP_COLS: 50,
+    TILE_SIZE:   32,
+    MAP_ROWS:    50,
+    MAP_COLS:    50,
     ASSETS_PATH: 'assets/images',
     ENEMY_DEFINITIONS: [
-      { id:'slime',       hp:  50, speed:1.2, reward:  5, spriteKey:'enemy_slime' },
-      { id:'orc_soldier', hp: 200, speed:1.0, reward: 20, spriteKey:'enemy_orc_soldier' }
+      { id:'slime',       hp:50,  speed:1.2, reward: 5, spriteKey:'enemy_slime' },
+      { id:'orc_soldier', hp:200, speed:1.0, reward:20, spriteKey:'enemy_orc_soldier' }
     ],
     WAVES: [
       { waveNo:1, delay:2000, enemies:[{ type:'slime', count:5, interval:1000 }] }
     ],
-    INITIAL_LIVES: 20
+    INITIAL_GOLD: 1000,
+    INITIAL_LIVES:20
   };
 
-  // 2) 道 (grid) を生成
+  // 2) 道(grid)を生成
   function generatePathGrid(){
     const { MAP_ROWS:rows, MAP_COLS:cols } = CONFIG;
     const g = Array.from({length:rows}, ()=>Array(cols).fill(0));
-    const dv = (c, rs, re) => { const s = rs<=re?1:-1; for(let r=rs; r!== re+s; r+=s) g[r][c]=1; };
-    const dh = (r, cs, ce) => { const s = cs<=ce?1:-1; for(let c=cs; c!== ce+s; c+=s) g[r][c]=1; };
+    const dv=(c,rs,re)=>{ const s=rs<=re?1:-1; for(let r=rs; r!==re+s; r+=s) g[r][c]=1; };
+    const dh=(r,cs,ce)=>{ const s=cs<=ce?1:-1; for(let c=cs; c!==ce+s; c+=s) g[r][c]=1; };
     dv(24,0,9);  dh(9,24,35);
     dv(35,9,19); dh(19,35,20);
     dv(20,19,29);dh(29,20,30);
@@ -52,52 +53,53 @@
   }
   const grid = generatePathGrid();
 
-  // 3) 道をたどってウェイポイントリストを自動生成
-  function findPath(grid, start, end){
-    const rows = grid.length, cols = grid[0].length;
-    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-    const visited = Array.from({length:rows}, ()=>Array(cols).fill(false));
-    const parent = {};
-    const q = [start];
-    visited[start.r][start.c] = true;
+  // 3) BFSで道をたどりウェイポイント生成
+  function findPath(grid,start,end){
+    const rows=grid.length, cols=grid[0].length;
+    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    const visited=Array.from({length:rows}, ()=>Array(cols).fill(false));
+    const parent={};
+    const q=[start];
+    visited[start.r][start.c]=true;
     while(q.length){
-      const cur = q.shift();
+      const cur=q.shift();
       if(cur.r===end.r && cur.c===end.c) break;
       for(const [dr,dc] of dirs){
-        const nr = cur.r+dr, nc = cur.c+dc;
+        const nr=cur.r+dr, nc=cur.c+dc;
         if(nr>=0&&nr<rows&&nc>=0&&nc<cols && !visited[nr][nc] && grid[nr][nc]===1){
-          visited[nr][nc] = true;
-          parent[`${nr},${nc}`] = cur;
+          visited[nr][nc]=true;
+          parent[`${nr},${nc}`]=cur;
           q.push({r:nr,c:nc});
         }
       }
     }
     let node = visited[end.r][end.c] ? end : null;
-    const path = [];
+    const path=[];
     while(node){
-      path.push({row:node.r, col:node.c});
-      node = parent[`${node.r},${node.col}`];
+      path.push({r:node.r, c:node.c});
+      const key = `${node.r},${node.c}`;
+      node = parent[key];
     }
     return path.reverse();
   }
   const waypoints = findPath(grid, {r:0,c:24}, {r:49,c:24});
 
-  // 4) ステージ定義
+  // 4) ステージデータ
   const STAGE = {
     map: {
-      tiles: grid,
-      rows: CONFIG.MAP_ROWS,
-      cols: CONFIG.MAP_COLS,
+      tiles:    grid,
+      rows:     CONFIG.MAP_ROWS,
+      cols:     CONFIG.MAP_COLS,
       tileSize: CONFIG.TILE_SIZE
     },
-    path: { waypoints },
-    waves: CONFIG.WAVES,
-    initialLives: CONFIG.INITIAL_LIVES
+    path:      { waypoints },
+    waves:     CONFIG.WAVES,
+    initial:   { gold:CONFIG.INITIAL_GOLD, lives:CONFIG.INITIAL_LIVES }
   };
 
-  // 5) アセットローダー
+  // 5) アセットローダー (タイル＋敵のみ)
   const assetLoader = {
-    images: {},
+    images:{},
     loadImages(){
       const keys = [
         'tile_grass','tile_road',
@@ -116,20 +118,22 @@
   // 6) レンダラー
   const renderer = {
     ctx:null, images:null,
-    init(canvasId, images){
+    init(id, images){
       this.images = images;
-      this.ctx = document.getElementById(canvasId).getContext('2d');
+      this.ctx = document.getElementById(id).getContext('2d');
     },
     clear(){
-      this.ctx.clearRect(0,0, STAGE.map.cols*STAGE.map.tileSize, STAGE.map.rows*STAGE.map.tileSize);
+      this.ctx.clearRect(0,0,
+        STAGE.map.cols * STAGE.map.tileSize,
+        STAGE.map.rows * STAGE.map.tileSize
+      );
     },
-    drawTile(row, col){
-      const id = STAGE.map.tiles[row][col];
-      const key = id===1 ? 'tile_road' : 'tile_grass';
+    drawTile(r,c){
+      const key = STAGE.map.tiles[r][c]===1 ? 'tile_road' : 'tile_grass';
       this.ctx.drawImage(
         this.images[key],
-        col*STAGE.map.tileSize,
-        row*STAGE.map.tileSize,
+        c*STAGE.map.tileSize,
+        r*STAGE.map.tileSize,
         STAGE.map.tileSize,
         STAGE.map.tileSize
       );
@@ -145,18 +149,19 @@
     }
   };
 
-  // 7) モデル
+  // 7) ゲームモデル
   const playModel = {
-    enemies: [],
-    lives: STAGE.initialLives,
-    waypoints: STAGE.path.waypoints,
+    enemies:[],
+    gold:  STAGE.initial.gold,
+    lives: STAGE.initial.lives,
+    waypoints,
     spawnEnemy(type){
       const def = CONFIG.ENEMY_DEFINITIONS.find(e=>e.id===type);
       const wp0 = this.waypoints[0];
       this.enemies.push({
         ...def,
-        x: wp0.col * STAGE.map.tileSize,
-        y: wp0.row * STAGE.map.tileSize,
+        x:   wp0.c * STAGE.map.tileSize,
+        y:   wp0.r * STAGE.map.tileSize,
         idx: 1
       });
     }
@@ -167,16 +172,16 @@
     render(){
       renderer.clear();
       // 地形
-      for(let r=0; r<STAGE.map.rows; r++){
-        for(let c=0; c<STAGE.map.cols; c++){
+      for(let r=0;r<STAGE.map.rows;r++){
+        for(let c=0;c<STAGE.map.cols;c++){
           renderer.drawTile(r,c);
         }
       }
       // 敵
-      playModel.enemies.forEach(e=> renderer.drawEnemy(e));
+      playModel.enemies.forEach(e=>renderer.drawEnemy(e));
       // HUD
       document.getElementById('hud').textContent =
-        `Lives: ${playModel.lives}`;
+        `Gold: ${playModel.gold}   Lives: ${playModel.lives}`;
     }
   };
 
@@ -185,7 +190,7 @@
     renderer.init('game-canvas', assetLoader.images);
     playView.render();
 
-    // ウェーブ１のスポーン
+    // 第1波スポーン
     setTimeout(()=>{
       STAGE.waves[0].enemies.forEach(e=>{
         for(let i=0;i<e.count;i++){
@@ -194,23 +199,22 @@
       });
     }, STAGE.waves[0].delay);
 
-    // 更新ループ
+    // メインループ：移動＆ゴールチェック
     setInterval(()=>{
-      // 敵移動 & ゴール到達チェック
-      for(let i=playModel.enemies.length-1; i>=0; i--){
+      for(let i=playModel.enemies.length-1;i>=0;i--){
         const e = playModel.enemies[i];
         const wp = playModel.waypoints[e.idx];
         if(!wp){
-          // ゴールしたらライフ減少 & 削除
+          // ゴール到達 → ライフ減少＆削除
           playModel.lives--;
           playModel.enemies.splice(i,1);
           continue;
         }
-        const tx = wp.col * STAGE.map.tileSize;
-        const ty = wp.row * STAGE.map.tileSize;
+        const tx = wp.c * STAGE.map.tileSize;
+        const ty = wp.r * STAGE.map.tileSize;
         const dx = tx - e.x, dy = ty - e.y;
         const dist = Math.hypot(dx,dy);
-        if(dist < e.speed){
+        if(dist < e.speed) {
           e.idx++;
         } else {
           e.x += dx/dist * e.speed;

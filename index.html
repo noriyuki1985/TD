@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>タワーディフェンス - ライフ管理デモ</title>
+  <title>タワーディフェンス - 敵移動＆ライフ減少デモ</title>
+  <!-- GitHub Pages で /TD/ 配下とみなす -->
   <base href="/TD/" />
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -10,84 +11,69 @@
     #game-container { position:relative; width:800px; height:800px; margin:20px auto; border:2px solid #fff; }
     #game-canvas { display:block; }
     #hud { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:4px; font-size:16px; }
-    #tower-menu {
-      position:absolute; display:none;
-      background:rgba(0,0,0,0.8); border:1px solid #fff;
-      padding:5px; border-radius:4px;
-    }
-    #tower-menu button {
-      margin:2px; padding:4px 8px;
-      background:#444; color:#fff; border:1px solid #888; cursor:pointer;
-    }
-    #tower-menu button:hover { background:#666; }
   </style>
 </head>
 <body>
   <div id="game-container">
     <canvas id="game-canvas" width="1600" height="1600"></canvas>
     <div id="hud"></div>
-    <div id="tower-menu">
-      <button data-tower="archer_tower">アーチャー塔 (100G)</button>
-      <button data-tower="mage_tower">メイジ塔 (250G)</button>
-      <button id="tower-cancel">キャンセル</button>
-    </div>
   </div>
 
   <script type="module">
+  // ───────────────────────────────────────────────────────────
   // 1) 設定
   const CONFIG = {
-    TILE_SIZE: 32, MAP_ROWS: 50, MAP_COLS: 50,
+    TILE_SIZE: 32,
+    MAP_ROWS: 50,
+    MAP_COLS: 50,
     ASSETS_PATH: 'assets/images',
     ENEMY_DEFINITIONS: [
-      {id:'slime',       hp:50, speed:1.2, reward:5,  spriteKey:'enemy_slime'},
-      {id:'orc_soldier', hp:200,speed:1.0, reward:20, spriteKey:'enemy_orc_soldier'}
+      { id:'slime',       hp:  50, speed:1.2, reward:  5, spriteKey:'enemy_slime' },
+      { id:'orc_soldier', hp: 200, speed:1.0, reward: 20, spriteKey:'enemy_orc_soldier' }
     ],
-    TOWER_DEFINITIONS: [
-      {id:'archer_tower', cost:100, range:3, damage:25, fireRate:800,  projectileType:'arrow', spriteKey:'tower_archer'},
-      {id:'mage_tower',   cost:250, range:3, damage:40, fireRate:1200,projectileType:'arrow', spriteKey:'tower_mage'}
+    WAVES: [
+      { waveNo:1, delay:2000, enemies:[{ type:'slime', count:5, interval:1000 }] }
     ],
-    PROJECTILE_DEFINITIONS: [
-      {id:'arrow', speed:2.0, spriteKey:'proj_arrow'}
-    ]
+    INITIAL_LIVES: 20
   };
 
-  // 2) マップ＆道(grid)生成
+  // 2) 道 (grid) を生成
   function generatePathGrid(){
     const { MAP_ROWS:rows, MAP_COLS:cols } = CONFIG;
     const g = Array.from({length:rows}, ()=>Array(cols).fill(0));
-    const dv=(c, rs, re)=>{ const s=rs<=re?1:-1; for(let r=rs;r!==re+s;r+=s) g[r][c]=1; };
-    const dh=(r, cs, ce)=>{ const s=cs<=ce?1:-1; for(let c=cs;c!==ce+s;c+=s) g[r][c]=1; };
-    dv(24,0,9); dh(9,24,35);
+    const dv = (c, rs, re) => { const s = rs<=re?1:-1; for(let r=rs; r!== re+s; r+=s) g[r][c]=1; };
+    const dh = (r, cs, ce) => { const s = cs<=ce?1:-1; for(let c=cs; c!== ce+s; c+=s) g[r][c]=1; };
+    dv(24,0,9);  dh(9,24,35);
     dv(35,9,19); dh(19,35,20);
-    dv(20,19,29); dh(29,20,30);
-    dv(30,29,39); dh(39,30,25);
+    dv(20,19,29);dh(29,20,30);
+    dv(30,29,39);dh(39,30,25);
     dv(24,39,49);
     return g;
   }
   const grid = generatePathGrid();
 
-  // 3) 道をたどってウェイポイントリストを自動生成 (BFS)
+  // 3) 道をたどってウェイポイントリストを自動生成
   function findPath(grid, start, end){
-    const rows=grid.length, cols=grid[0].length;
-    const dirs=[ [1,0],[-1,0],[0,1],[0,-1] ];
-    const visited=Array.from({length:rows},()=>Array(cols).fill(false));
+    const rows = grid.length, cols = grid[0].length;
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    const visited = Array.from({length:rows}, ()=>Array(cols).fill(false));
     const parent = {};
-    const q=[start];
-    visited[start.r][start.c]=true;
+    const q = [start];
+    visited[start.r][start.c] = true;
     while(q.length){
-      const cur=q.shift();
+      const cur = q.shift();
       if(cur.r===end.r && cur.c===end.c) break;
       for(const [dr,dc] of dirs){
-        const nr=cur.r+dr, nc=cur.c+dc;
-        if(nr>=0&&nr<rows&&nc>=0&&nc<cols&&!visited[nr][nc]&&grid[nr][nc]===1){
-          visited[nr][nc]=true;
-          parent[`${nr},${nc}`]=cur;
+        const nr = cur.r+dr, nc = cur.c+dc;
+        if(nr>=0&&nr<rows&&nc>=0&&nc<cols && !visited[nr][nc] && grid[nr][nc]===1){
+          visited[nr][nc] = true;
+          parent[`${nr},${nc}`] = cur;
           q.push({r:nr,c:nc});
         }
       }
     }
-    const path=[], key=`${end.r},${end.c}`;
     let node = visited[end.r][end.c] ? end : null;
+    const path = [];
     while(node){
       path.push({row:node.r, col:node.c});
       node = parent[`${node.r},${node.col}`];
@@ -98,38 +84,31 @@
 
   // 4) ステージ定義
   const STAGE = {
-    map:{
-      rows:50, cols:50, tileSize:32,
-      tiles:grid,
-      tileTypes:[
-        {id:0,name:'Grass',isWalkable:false,isBuildable:true,spriteKey:'tile_grass'},
-        {id:1,name:'Road', isWalkable:true, isBuildable:false,spriteKey:'tile_road'}
-      ]
+    map: {
+      tiles: grid,
+      rows: CONFIG.MAP_ROWS,
+      cols: CONFIG.MAP_COLS,
+      tileSize: CONFIG.TILE_SIZE
     },
-    path:{ waypoints },
-    initialState:{gold:1000,lives:20},
-    waves:[{waveNo:1,delay:2000,enemies:[{type:'slime',count:5,interval:1000}]}]
+    path: { waypoints },
+    waves: CONFIG.WAVES,
+    initialLives: CONFIG.INITIAL_LIVES
   };
 
   // 5) アセットローダー
   const assetLoader = {
-    images:{},
+    images: {},
     loadImages(){
       const keys = [
         'tile_grass','tile_road',
-        ...CONFIG.ENEMY_DEFINITIONS.map(e=>e.spriteKey),
-        ...CONFIG.TOWER_DEFINITIONS.map(t=>t.spriteKey),
-        ...CONFIG.PROJECTILE_DEFINITIONS.map(p=>p.spriteKey)
+        ...CONFIG.ENEMY_DEFINITIONS.map(e=>e.spriteKey)
       ];
       return Promise.all(keys.map(key=>{
-        const cat = key.startsWith('tile_')?'tiles'
-                  : key.startsWith('enemy_')?'enemies'
-                  : key.startsWith('tower_')?'towers'
-                  :'projectiles';
-        const img=new Image();
-        img.src=`${CONFIG.ASSETS_PATH}/${cat}/${key}.png`;
-        this.images[key]=img;
-        return new Promise(r=>img.onload=r);
+        const category = key.startsWith('tile_') ? 'tiles' : 'enemies';
+        const img = new Image();
+        img.src = `${CONFIG.ASSETS_PATH}/${category}/${key}.png`;
+        this.images[key] = img;
+        return new Promise(res=>img.onload=res);
       }));
     }
   };
@@ -137,125 +116,109 @@
   // 6) レンダラー
   const renderer = {
     ctx:null, images:null,
-    init(id, imgs){
-      this.images=imgs;
-      this.ctx=document.getElementById(id).getContext('2d');
+    init(canvasId, images){
+      this.images = images;
+      this.ctx = document.getElementById(canvasId).getContext('2d');
     },
-    clear(){ this.ctx.clearRect(0,0,CONFIG.MAP_COLS*CONFIG.TILE_SIZE,CONFIG.MAP_ROWS*CONFIG.TILE_SIZE); },
-    drawTile(id,x,y){
-      const key=id===1?'tile_road':'tile_grass';
-      this.ctx.drawImage(this.images[key],x,y,CONFIG.TILE_SIZE,CONFIG.TILE_SIZE);
+    clear(){
+      this.ctx.clearRect(0,0, STAGE.map.cols*STAGE.map.tileSize, STAGE.map.rows*STAGE.map.tileSize);
     },
-    drawSprite(key,x,y){
-      this.ctx.drawImage(this.images[key],x,y,CONFIG.TILE_SIZE,CONFIG.TILE_SIZE);
+    drawTile(row, col){
+      const id = STAGE.map.tiles[row][col];
+      const key = id===1 ? 'tile_road' : 'tile_grass';
+      this.ctx.drawImage(
+        this.images[key],
+        col*STAGE.map.tileSize,
+        row*STAGE.map.tileSize,
+        STAGE.map.tileSize,
+        STAGE.map.tileSize
+      );
+    },
+    drawEnemy(e){
+      this.ctx.drawImage(
+        this.images[e.spriteKey],
+        e.x,
+        e.y,
+        STAGE.map.tileSize,
+        STAGE.map.tileSize
+      );
     }
   };
 
   // 7) モデル
   const playModel = {
-    enemies:[], towers:[],
+    enemies: [],
+    lives: STAGE.initialLives,
     waypoints: STAGE.path.waypoints,
-    mapData: STAGE.map,
-    gold: STAGE.initialState.gold,
-    lives: STAGE.initialState.lives,
     spawnEnemy(type){
-      const def=CONFIG.ENEMY_DEFINITIONS.find(e=>e.id===type);
-      const wp0=this.waypoints[0];
-      this.enemies.push({ ...def,
-        x: wp0.col*CONFIG.TILE_SIZE,
-        y: wp0.row*CONFIG.TILE_SIZE,
-        idx:1
+      const def = CONFIG.ENEMY_DEFINITIONS.find(e=>e.id===type);
+      const wp0 = this.waypoints[0];
+      this.enemies.push({
+        ...def,
+        x: wp0.col * STAGE.map.tileSize,
+        y: wp0.row * STAGE.map.tileSize,
+        idx: 1
       });
     }
   };
 
   // 8) ビュー
   const playView = {
-    init(r,m){ this.r=r; this.m=m; },
     render(){
-      this.r.clear();
-      // マップ
-      for(let r=0;r<this.m.mapData.rows;r++){
-        for(let c=0;c<this.m.mapData.cols;c++){
-          this.r.drawTile(this.m.mapData.tiles[r][c], c*CONFIG.TILE_SIZE, r*CONFIG.TILE_SIZE);
+      renderer.clear();
+      // 地形
+      for(let r=0; r<STAGE.map.rows; r++){
+        for(let c=0; c<STAGE.map.cols; c++){
+          renderer.drawTile(r,c);
         }
       }
-      // タワー
-      this.m.towers.forEach(t=> this.r.drawSprite(t.spriteKey,t.x,t.y));
       // 敵
-      this.m.enemies.forEach(e=> this.r.drawSprite(e.spriteKey,e.x,e.y));
+      playModel.enemies.forEach(e=> renderer.drawEnemy(e));
       // HUD
       document.getElementById('hud').textContent =
-        `Gold: ${this.m.gold}   Lives: ${this.m.lives}`;
+        `Lives: ${playModel.lives}`;
     }
   };
 
-  // 9) タワー選択UI
-  const menu = document.getElementById('tower-menu'), canvas = document.getElementById('game-canvas');
-  let selCell = null;
-  menu.querySelectorAll('[data-tower]').forEach(b=>{
-    b.addEventListener('click',()=>{
-      const id=b.dataset.tower, def=CONFIG.TOWER_DEFINITIONS.find(t=>t.id===id);
-      if(playModel.gold>=def.cost && selCell){
-        playModel.gold-=def.cost;
-        playModel.towers.push({...def,
-          x: selCell.c*CONFIG.TILE_SIZE, y: selCell.r*CONFIG.TILE_SIZE
-        });
-      }
-      menu.style.display='none';
-      playView.render();
-    });
-  });
-  document.getElementById('tower-cancel').onclick=()=>{
-    menu.style.display='none';
-  };
-  canvas.onclick = e=>{
-    const rect=canvas.getBoundingClientRect();
-    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-    const c=Math.floor(mx/CONFIG.TILE_SIZE), r=Math.floor(my/CONFIG.TILE_SIZE);
-    const cell=STAGE.map.tiles[r][c];
-    const occupied=playModel.towers.some(t=>t.x===c*CONFIG.TILE_SIZE&&t.y===r*CONFIG.TILE_SIZE);
-    if(cell===0 && !occupied){
-      selCell={r,c};
-      menu.style.left=`${e.clientX}px`;
-      menu.style.top =`${e.clientY}px`;
-      menu.style.display='block';
-    }
-  };
-
-  // 10) ゲーム開始
+  // 9) ゲーム開始
   assetLoader.loadImages().then(()=>{
-    renderer.init('game-canvas',assetLoader.images);
-    playView.init(renderer,playModel);
+    renderer.init('game-canvas', assetLoader.images);
     playView.render();
 
-    // ウェーブ１の自動スポーン
+    // ウェーブ１のスポーン
     setTimeout(()=>{
       STAGE.waves[0].enemies.forEach(e=>{
         for(let i=0;i<e.count;i++){
-          setTimeout(()=>playModel.spawnEnemy(e.type),i*e.interval);
+          setTimeout(()=>playModel.spawnEnemy(e.type), i*e.interval);
         }
       });
     }, STAGE.waves[0].delay);
 
-    // フレームループ：敵移動＋ライフ減少処理
+    // 更新ループ
     setInterval(()=>{
-      for(let i=playModel.enemies.length-1;i>=0;i--){
-        const e=playModel.enemies[i];
+      // 敵移動 & ゴール到達チェック
+      for(let i=playModel.enemies.length-1; i>=0; i--){
+        const e = playModel.enemies[i];
         const wp = playModel.waypoints[e.idx];
-        // 終端を超えたらライフ減少＆配列から削除
         if(!wp){
+          // ゴールしたらライフ減少 & 削除
           playModel.lives--;
           playModel.enemies.splice(i,1);
           continue;
         }
-        const tx=wp.col*CONFIG.TILE_SIZE, ty=wp.row*CONFIG.TILE_SIZE;
-        const dx=tx-e.x, dy=ty-e.y, d=Math.hypot(dx,dy);
-        if(d<e.speed) e.idx++;
-        else { e.x+=dx/d*e.speed; e.y+=dy/d*e.speed; }
+        const tx = wp.col * STAGE.map.tileSize;
+        const ty = wp.row * STAGE.map.tileSize;
+        const dx = tx - e.x, dy = ty - e.y;
+        const dist = Math.hypot(dx,dy);
+        if(dist < e.speed){
+          e.idx++;
+        } else {
+          e.x += dx/dist * e.speed;
+          e.y += dy/dist * e.speed;
+        }
       }
       playView.render();
-    },1000/60);
+    }, 1000/60);
   });
   </script>
 </body>

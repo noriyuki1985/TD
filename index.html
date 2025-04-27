@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>タワーディフェンス – サイドバー配置版</title>
+  <title>タワーディフェンス – サイドバー配置＆正確クリック版</title>
   <base href="/TD/" />
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -54,6 +54,10 @@
     #sidebar button.selected {
       background: #666;
     }
+    #sidebar p {
+      margin-top: 10px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -103,7 +107,7 @@
   // 2) 道(grid)生成
   function generatePathGrid(){
     const { MAP_ROWS:rows, MAP_COLS:cols } = CONFIG;
-    const g=Array.from({length:rows},()=>Array(cols).fill(0));
+    const g = Array.from({length:rows}, ()=>Array(cols).fill(0));
     const dv=(c,rs,re)=>{ const s=rs<=re?1:-1; for(let r=rs;r!==re+s;r+=s) g[r][c]=1; };
     const dh=(r,cs,ce)=>{ const s=cs<=ce?1:-1; for(let c=cs;c!==ce+s;c+=s) g[r][c]=1; };
     dv(24,0,9);  dh(9,24,35);
@@ -115,34 +119,35 @@
   }
   const grid = generatePathGrid();
 
-  // 3) 道をたどりウェイポイント生成
+  // 3) BFSでウェイポイント生成
   function findPath(grid,start,end){
     const rows=grid.length, cols=grid[0].length;
     const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
-    const visited=Array.from({length:rows},()=>Array(cols).fill(false));
+    const visited=Array.from({length:rows}, ()=>Array(cols).fill(false));
     const parent={};
     const q=[start];
     visited[start.r][start.c]=true;
     while(q.length){
       const cur=q.shift();
-      if(cur.r===end.r&&cur.c===end.c) break;
+      if(cur.r===end.r && cur.c===end.c) break;
       for(const [dr,dc] of dirs){
         const nr=cur.r+dr, nc=cur.c+dc;
-        if(nr>=0&&nr<rows&&nc>=0&&nc<cols&&!visited[nr][nc]&&grid[nr][nc]===1){
+        if(nr>=0&&nr<rows&&nc>=0&&nc<cols && !visited[nr][nc] && grid[nr][nc]===1){
           visited[nr][nc]=true;
           parent[`${nr},${nc}`]=cur;
           q.push({r:nr,c:nc});
         }
       }
     }
-    let node=visited[end.r][end.c]?end:null, path=[];
+    let node = visited[end.r][end.c] ? end : null;
+    const path = [];
     while(node){
       path.push({r:node.r,c:node.c});
-      node=parent[`${node.r},${node.c}`];
+      node = parent[`${node.r},${node.c}`];
     }
     return path.reverse();
   }
-  const waypoints=findPath(grid,{r:0,c:24},{r:49,c:24});
+  const waypoints = findPath(grid, {r:0,c:24}, {r:49,c:24});
 
   // 4) ステージ定義
   const STAGE = {
@@ -153,10 +158,10 @@
   };
 
   // 5) アセットローダー
-  const assetLoader={
+  const assetLoader = {
     images:{},
     loadImages(){
-      const keys=[
+      const keys = [
         'tile_grass','tile_road',
         ...CONFIG.ENEMY_DEFINITIONS.map(e=>e.spriteKey),
         ...CONFIG.TOWER_DEFINITIONS.map(t=>t.spriteKey),
@@ -170,13 +175,13 @@
         const img=new Image();
         img.src=`${CONFIG.ASSETS_PATH}/${cat}/${key}.png`;
         this.images[key]=img;
-        return new Promise(r=>img.onload=r);
+        return new Promise(res=>img.onload=res);
       }));
     }
   };
 
   // 6) レンダラー
-  const renderer={
+  const renderer = {
     ctx:null, images:null,
     init(id,imgs){
       this.images=imgs;
@@ -189,7 +194,7 @@
       );
     },
     drawTile(r,c){
-      const key=STAGE.map.tiles[r][c]===1?'tile_road':'tile_grass';
+      const key = STAGE.map.tiles[r][c]===1 ? 'tile_road' : 'tile_grass';
       this.ctx.drawImage(
         this.images[key],
         c*STAGE.map.tileSize,
@@ -201,22 +206,22 @@
     drawTower(t){
       this.ctx.drawImage(
         this.images[t.spriteKey],
-        t.x,t.y,
-        STAGE.map.tileSize,STAGE.map.tileSize
+        t.x, t.y,
+        STAGE.map.tileSize, STAGE.map.tileSize
       );
     },
     drawEnemy(e){
       this.ctx.drawImage(
         this.images[e.spriteKey],
-        e.x,e.y,
-        STAGE.map.tileSize,STAGE.map.tileSize
+        e.x, e.y,
+        STAGE.map.tileSize, STAGE.map.tileSize
       );
     },
     drawProjectile(p){
       this.ctx.drawImage(
         this.images[p.spriteKey],
-        p.x,p.y,
-        STAGE.map.tileSize/2,STAGE.map.tileSize/2
+        p.x, p.y,
+        STAGE.map.tileSize/2, STAGE.map.tileSize/2
       );
     },
     drawClear(){
@@ -229,7 +234,7 @@
   };
 
   // 7) モデル
-  const playModel={
+  const playModel = {
     enemies:[],
     towers:[],
     projectiles:[],
@@ -249,7 +254,7 @@
   };
 
   // 8) ビュー
-  const playView={
+  const playView = {
     render(){
       renderer.clear();
       // 地形
@@ -266,12 +271,12 @@
       playModel.enemies.forEach(e=>renderer.drawEnemy(e));
       // HUD
       document.getElementById('hud').textContent=
-        `Gold:${playModel.gold}  Lives:${playModel.lives}`;
+        `Gold:${playModel.gold} Lives:${playModel.lives}`;
       if(clearShown) renderer.drawClear();
     }
   };
 
-  // 9) サイドバー操作
+  // 9) サイドバー操作＆正確クリック
   let selectedTowerId = null;
   document.querySelectorAll('#sidebar button[data-tower]').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -281,22 +286,31 @@
       document.getElementById('selected-tower').textContent = selectedTowerId;
     });
   });
-  document.getElementById('selected-tower').textContent = 'なし';
 
   document.getElementById('game-canvas').addEventListener('click', e=>{
     if(!selectedTowerId) return;
-    const rect=e.target.getBoundingClientRect();
-    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-    const c=Math.floor(mx/CONFIG.TILE_SIZE), r=Math.floor(my/CONFIG.TILE_SIZE);
-    if(grid[r][c]===0 && !playModel.towers.some(t=>t.x===c*CONFIG.TILE_SIZE&&t.y===r*CONFIG.TILE_SIZE)){
-      const def=CONFIG.TOWER_DEFINITIONS.find(t=>t.id===selectedTowerId);
-      if(playModel.gold>=def.cost){
+    const canvas = e.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    // scale factor
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top ) * scaleY;
+    const col = Math.floor(mx / CONFIG.TILE_SIZE);
+    const row = Math.floor(my / CONFIG.TILE_SIZE);
+
+    if (
+      grid[row][col] === 0 &&
+      !playModel.towers.some(t => t.x === col * CONFIG.TILE_SIZE && t.y === row * CONFIG.TILE_SIZE)
+    ) {
+      const def = CONFIG.TOWER_DEFINITIONS.find(t => t.id === selectedTowerId);
+      if (playModel.gold >= def.cost) {
         playModel.gold -= def.cost;
         playModel.towers.push({
           ...def,
-          x:c*STAGE.map.tileSize,
-          y:r*STAGE.map.tileSize,
-          lastFire:0
+          x: col * STAGE.map.tileSize,
+          y: row * STAGE.map.tileSize,
+          lastFire: 0
         });
         playView.render();
       }
@@ -304,14 +318,13 @@
   });
 
   // 10) ゲーム開始
-  let spawnCount=0,
-      totalToSpawn=STAGE.waves.reduce((s,w)=>s+w.enemies[0].count,0),
-      clearShown=false;
+  let spawnCount = 0,
+      totalToSpawn = STAGE.waves.reduce((s,w)=>s+w.enemies[0].count,0),
+      clearShown = false;
 
   assetLoader.loadImages().then(()=>{
     renderer.init('game-canvas',assetLoader.images);
     playView.render();
-
     // ウェーブスポーン
     STAGE.waves.forEach(wave=>{
       setTimeout(()=>{
@@ -325,11 +338,10 @@
         });
       }, wave.delay);
     });
-
     // メインループ
     setInterval(()=>{
-      const now=Date.now();
-      // タワー攻撃・発射体生成
+      const now = Date.now();
+      // タワー攻撃＆発射体生成
       playModel.towers.forEach(t=>{
         if(now - t.lastFire < t.fireRate) return;
         const inRange = playModel.enemies.filter(e=>{
@@ -346,15 +358,14 @@
           const pDef = CONFIG.PROJECTILE_DEFINITIONS.find(p=>p.id===t.projectileType);
           playModel.projectiles.push({
             spriteKey:pDef.spriteKey,
-            x: t.x + STAGE.map.tileSize/4,
-            y: t.y + STAGE.map.tileSize/4,
-            speed: pDef.speed,
-            damage: t.damage,
+            x:t.x + STAGE.map.tileSize/4,
+            y:t.y + STAGE.map.tileSize/4,
+            speed:pDef.speed,
+            damage:t.damage,
             target
           });
         }
       });
-
       // 発射体移動＆ヒット判定
       for(let i=playModel.projectiles.length-1;i>=0;i--){
         const p=playModel.projectiles[i], e=p.target;
@@ -375,21 +386,20 @@
           p.y += dy/d * p.speed;
         }
       }
-
       // 敵移動＆ゴールチェック
       for(let i=playModel.enemies.length-1;i>=0;i--){
-        const e=playModel.enemies[i], wp=playModel.waypoints[e.idx];
+        const e=playModel.enemies[i],
+              wp=playModel.waypoints[e.idx];
         if(!wp){
           playModel.lives--;
           playModel.enemies.splice(i,1);
           continue;
         }
-        const tx=wp.c*STAGE.map.tileSize, ty=wp.r*STAGE.map.tileSize;
-        const dx=tx-e.x, dy=ty-e.y, dist=Math.hypot(dx,dy);
+        const tx=wp.c*STAGE.map.tileSize, ty=wp.r*STAGE.map.tileSize,
+              dx=tx-e.x, dy=ty-e.y, dist=Math.hypot(dx,dy);
         if(dist < e.speed) e.idx++;
         else { e.x+=dx/dist*e.speed; e.y+=dy/dist*e.speed; }
       }
-
       // クリア判定
       if(!clearShown
          && spawnCount===totalToSpawn
@@ -397,7 +407,6 @@
          && playModel.lives>0){
         clearShown = true;
       }
-
       playView.render();
     },1000/60);
   });

@@ -3,10 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <title>タワーディフェンス - チュートリアル</title>
-  <!-- Base を指定すると、すべての相対URLが /TD/ 配下になります -->
+  <!-- すべての相対URLを /TD/ 配下に -->
   <base href="/TD/" />
 
-  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    /* global.css の内容 */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#222; color:#fff; font-family:sans-serif; }
+    #game-container { position:relative; width:800px; height:800px; margin:20px auto; border:2px solid #fff; }
+    #game-canvas { display:block; }
+    #hud { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:4px; font-size:16px; }
+  </style>
 </head>
 <body>
   <div id="game-container">
@@ -14,10 +21,164 @@
     <div id="hud"></div>
   </div>
 
-  <!-- 設定ファイル（グローバル変数定義） -->
-  <script src="js/config.js"></script>
+  <script type="module">
+  // ─────────────────────────────────────────────────────────────
+  // 1) 設定
+  const CONFIG = {
+    TILE_SIZE: 32, MAP_ROWS: 50, MAP_COLS: 50,
+    ASSETS_PATH: 'assets/images',
+    // 敵／塔定義
+    ENEMY_DEFINITIONS: [
+      {id:'slime',       hp:50, speed:1.2, reward:5,  spriteKey:'enemy_slime'},
+      {id:'orc_soldier', hp:200,speed:1.0, reward:20, spriteKey:'enemy_orc_soldier'}
+    ],
+    TOWER_DEFINITIONS: [
+      {id:'archer_tower', cost:100, range:3, damage:25, fireRate:800,  projectileType:'arrow', spriteKey:'tower_archer'},
+      {id:'mage_tower',   cost:250, range:3, damage:40, fireRate:1200, projectileType:'arrow', spriteKey:'tower_mage'}
+    ],
+    PROJECTILE_DEFINITIONS: [
+      {id:'arrow', speed:2.0, spriteKey:'proj_arrow'}
+    ]
+  };
 
-  <!-- メインロジック（ESモジュール） -->
-  <script type="module" src="js/main.js"></script>
+  // 2) マップ＆経路データをプログラム生成
+  function generatePathGrid(){
+    const rows=CONFIG.MAP_ROWS, cols=CONFIG.MAP_COLS;
+    const grid = Array.from({length:rows}, ()=>Array(cols).fill(0));
+    // S字ルート：25列目を起点に上下・左右を折り返し
+    function dv(col, rs, re){
+      const step = rs<=re?1:-1;
+      for(let r=rs;r!==re+step;r+=step) grid[r][col]=1;
+    }
+    function dh(row, cs, ce){
+      const step = cs<=ce?1:-1;
+      for(let c=cs;c!==ce+step;c+=step) grid[row][c]=1;
+    }
+    dv(24, 0, 9);
+    dh(9,  24,35);
+    dv(35, 9,19);
+    dh(19,35,20);
+    dv(20,19,29);
+    dh(29,20,30);
+    dv(30,29,39);
+    dh(39,30,25);
+    dv(24,39,49);
+    return grid;
+  }
+
+  const STAGE = {
+    id:'tutorial_1',
+    name:'チュートリアル',
+    description:'歩兵か射手を雇ってマップに配置しよう！',
+    background:'background_tutorial_1',
+    music:'music_tutorial_1',
+    map:{
+      rows:CONFIG.MAP_ROWS,
+      cols:CONFIG.MAP_COLS,
+      tileSize:CONFIG.TILE_SIZE,
+      tileTypes:[
+        {id:0,name:'Grass',isWalkable:false,isBuildable:true, spriteKey:'tile_grass'},
+        {id:1,name:'Road', isWalkable:true, isBuildable:false,spriteKey:'tile_road'}
+      ],
+      tiles: generatePathGrid()
+    },
+    path:{
+      waypoints:[
+        {order:0, row:0, col:24},
+        {order:49,row:49,col:24}
+      ]
+    },
+    initialState:{gold:1000,lives:20},
+    waves:[
+      {waveNo:1,delay:2000,enemies:[{type:'slime',count:5,interval:1000}]}
+    ]
+  };
+
+  // 3) アセットローダー
+  const assetLoader = {
+    images:{},
+    loadImages(){
+      const keys = [
+        'tile_grass','tile_road',
+        ...CONFIG.ENEMY_DEFINITIONS.map(e=>e.spriteKey),
+        ...CONFIG.TOWER_DEFINITIONS.map(t=>t.spriteKey),
+        ...CONFIG.PROJECTILE_DEFINITIONS.map(p=>p.spriteKey)
+      ];
+      return Promise.all(keys.map(key=>{
+        const cat = key.startsWith('tile_')?'tiles'
+                  : key.startsWith('enemy_')?'enemies'
+                  : key.startsWith('tower_')?'towers'
+                  :'projectiles';
+        const img=new Image();
+        img.src=`${CONFIG.ASSETS_PATH}/${cat}/${key}.png`;
+        this.images[key]=img;
+        return new Promise(r=>img.onload=r);
+      }));
+    }
+  };
+
+  // 4) レンダラー
+  const renderer = {
+    ctx:null,images:null,
+    init(canvasId, images){
+      this.images=images;
+      this.ctx=document.getElementById(canvasId).getContext('2d');
+    },
+    clear(){this.ctx.clearRect(0,0,CONFIG.MAP_COLS*CONFIG.TILE_SIZE,CONFIG.MAP_ROWS*CONFIG.TILE_SIZE);},
+    drawTile(id,x,y){ 
+      const key = id===1?'tile_road':'tile_grass';
+      this.ctx.drawImage(this.images[key],x,y,CONFIG.TILE_SIZE,CONFIG.TILE_SIZE);
+    },
+    drawSprite(key,x,y){ this.ctx.drawImage(this.images[key],x,y); }
+  };
+
+  // 5) モデル－ビュー－コントローラ
+  const playModel = {enemies:[],towers:[],waves:STAGE.waves,mapData:STAGE.map,waypoints:STAGE.path.waypoints, gold:STAGE.initialState.gold, lives:STAGE.initialState.lives,
+    init(){}, spawnEnemy(type){
+      const def = CONFIG.ENEMY_DEFINITIONS.find(e=>e.id===type);
+      this.enemies.push({...def,x:0,y:0,wp:0});
+    }
+  };
+  const playView = {
+    init(r,m){this.r=r;this.m=m;},
+    render(){
+      this.r.clear();
+      for(let r=0;r<this.m.mapData.rows;r++){
+        for(let c=0;c<this.m.mapData.cols;c++){
+          this.r.drawTile(this.m.mapData.tiles[r][c],c*CONFIG.TILE_SIZE,r*CONFIG.TILE_SIZE);
+        }
+      }
+      this.m.enemies.forEach(e=>this.r.drawSprite(e.spriteKey,e.x,e.y));
+      document.getElementById('hud').textContent=`Gold:${this.m.gold} Lives:${this.m.lives}`;
+    }
+  };
+  const playController = {
+    start(){
+      // 最初のウェーブだけ自動スポーン
+      setTimeout(()=>{
+        STAGE.waves[0].enemies.forEach(e=>{
+          for(let i=0;i<e.count;i++){
+            setTimeout(()=>playModel.spawnEnemy(e.type),i*e.interval);
+          }
+        });
+      },STAGE.waves[0].delay);
+      // メインループ
+      setInterval(()=>{
+        // 敵を waypoint に沿って移動
+        playModel.enemies.forEach(e=>{
+          const wp=playModel.waypoints[e.wp];
+          const tx=wp.col*CONFIG.TILE_SIZE, ty=wp.row*CONFIG.TILE_SIZE;
+          const dx=tx-e.x, dy=ty-e.y, d=Math.hypot(dx,dy);
+          if(d<e.speed){ e.wp++; }
+          else { e.x += dx/d*e.speed; e.y += dy/d*e.speed; }
+        });
+        playView.render();
+      },1000/60);
+    }
+  };
+
+  // 6) 初期化
+  assetLoader.loadImages().then(()=>{ renderer.init('game-canvas',assetLoader.images); playModel.init(); playView.init(renderer,playModel); playController.start(); });
+  </script>
 </body>
 </html>
